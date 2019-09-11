@@ -10,6 +10,7 @@ namespace ParallelExceptions
   {
     private static void Main()
     {
+      ParallelForEach3Async();
       ParallelForEach2Async();
       ParallelForEachAsync();
       //ParallelForEach();
@@ -60,6 +61,58 @@ namespace ParallelExceptions
         }
       }
       catch (Exception e)
+      {
+        Console.WriteLine($"Caught exception! {e.Message}");
+      }
+    }
+
+    private static void ParallelForEach3Async()
+    {
+      try
+      {
+        // use a concurent queue so all the thread can add
+        // while it is an overhead we do not expect to have that many exceptions in production code.
+        var numbers = new[] {1, 2, 3, 4, 5};
+        var tasks = new List<Task>();
+
+        async Task t(int number)
+        {
+          // here we do not care about errors
+          await Task.Delay(100).ConfigureAwait(false);
+          Console.WriteLine($"Working on number: {number}");
+          if (number == 3)
+          {
+            throw new Exception("Boom 3!");
+          }
+          if (number == 1)
+          {
+            throw new Exception("Boom 1!");
+          }
+        }
+
+        foreach (var number in numbers)
+        {
+          tasks.Add(t(number));
+        }
+
+        // complete the work
+        try
+        {
+          Task.WhenAll(tasks.ToArray()).GetAwaiter().GetResult();
+        }
+        catch
+        {
+          // find the error(s) that might have happened.
+          var errors = tasks.Where(tt => tt.IsFaulted).Select(tu => tu.Exception).ToList();
+
+          // we are back in our own thread
+          if (errors.Count > 0)
+          {
+            throw new AggregateException(errors);
+          }
+        }
+      }
+      catch (AggregateException e)
       {
         Console.WriteLine($"Caught exception! {e.Message}");
       }
