@@ -1,13 +1,15 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace ParallelTasks
 {
   internal class Program
   {
-    private const int NumberOfTasks = 10;
+    private const int NumberOfTasks = 100;
+    private const int WaitMilliseconds = 10;
 
     private static async Task Main()
     { 
@@ -16,6 +18,7 @@ namespace ParallelTasks
       await TimeMethod("Tasks use Parallel for each", UseParallelForEach).ConfigureAwait(false);
       await TimeMethod("Tasks use When All", WhenAll).ConfigureAwait(false);
       await TimeMethod("Fake Tasks use When All", FakeWhenAll).ConfigureAwait(false);
+      await TimeMethod("Fake Tasks forced async use When All", FakeWhenAllTryingToRunAsAsync).ConfigureAwait(false);
 
       Console.WriteLine("Bye");
       Console.ReadKey();
@@ -35,14 +38,43 @@ namespace ParallelTasks
       }
     }
 
+    private static async Task FakeWhenAllTryingToRunAsAsync()
+    {
+      var taskFactory = new
+        TaskFactory(CancellationToken.None,
+          TaskCreationOptions.None,
+          TaskContinuationOptions.None,
+          TaskScheduler.Default);
+
+      // this task does not really run async
+      Task LocalTask()
+      {
+        Task.Delay(WaitMilliseconds).GetAwaiter().GetResult();
+        return Task.CompletedTask;
+      }
+
+      // start tasks that will run one after the other
+      var tasks = new List<Task>();
+      for (var i = 0; i < NumberOfTasks; ++i)
+      {
+        tasks.Add(taskFactory
+                .StartNew(LocalTask)
+                .Unwrap()
+        );
+      }
+
+      // then wait for them all
+      await Task.WhenAll(tasks.ToArray()).ConfigureAwait(false);
+    }
+
     private static async Task FakeWhenAll()
     {
       // this task does not really run async
       Task LocalTask()
       {
-        Task.Delay(1000).GetAwaiter().GetResult();
+        Task.Delay(WaitMilliseconds).GetAwaiter().GetResult();
         return Task.CompletedTask;
-      };
+      }
 
       // start tasks that will run one after the other
       var tasks = new List<Task>();
@@ -61,7 +93,7 @@ namespace ParallelTasks
       var tasks = new List<Task>();
       for (var i = 0; i < NumberOfTasks; ++i)
       {
-        tasks.Add(Task.Delay(1000));
+        tasks.Add(Task.Delay(WaitMilliseconds));
       }
 
       // then wait for them all
@@ -74,7 +106,7 @@ namespace ParallelTasks
       var tasks = new List<Task>();
       for (var i = 0; i < NumberOfTasks; ++i)
       {
-        tasks.Add(Task.Delay(1000));
+        tasks.Add(Task.Delay(WaitMilliseconds));
       }
 
       // make me 'async'
@@ -94,7 +126,7 @@ namespace ParallelTasks
       var tasks = new List<Task>();
       for (var i = 0; i < NumberOfTasks; ++i)
       {
-        tasks.Add( Task.Delay(1000));
+        tasks.Add( Task.Delay(WaitMilliseconds));
       }
 
       // then run them one at a time
