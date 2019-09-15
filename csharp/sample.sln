@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "lockspeed", "lockspeed\lock
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ParallelExceptions", "ParallelExceptions\ParallelExceptions.csproj", "{E0F9CD27-F989-4966-83C4-172CC26D75AF}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ParallelTasks", "ParallelTasks\ParallelTasks.csproj", "{96CB1121-1268-45BF-BA38-54E266CFF813}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{E0F9CD27-F989-4966-83C4-172CC26D75AF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E0F9CD27-F989-4966-83C4-172CC26D75AF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E0F9CD27-F989-4966-83C4-172CC26D75AF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{96CB1121-1268-45BF-BA38-54E266CFF813}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{96CB1121-1268-45BF-BA38-54E266CFF813}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{96CB1121-1268-45BF-BA38-54E266CFF813}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{96CB1121-1268-45BF-BA38-54E266CFF813}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
