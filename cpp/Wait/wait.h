@@ -77,16 +77,64 @@ private:
     Helper helper = { &waiter, milliseconds, condition };
 
     // start the thread with the arguments we have
-    std::thread thread( _Awaiter, helper, std::move(callResult));
+    auto future = std::async( std::launch::async,
+      _Awaiter, helper, std::move(callResult)
+    );
 
-    // wait for the thread to complete.
-    thread.join();
+    // wait for the future to complete ... or timeout.
+    // if we return false, we gave up waiting.
+    if (!SpinUntilFutureComplete( milliseconds, future ))
+    {
+      // we timed out, so something failed...
+      return false;
+    }
 
-    // the result
+    // our thread competed, get out.
     return callFuture.get();
   }
 
-  bool Awaiter(const long long milliseconds, std::function<bool()> condition)
+  /**
+   * \brief wait for the future to complete, if it does not complete in time we will get out.
+   *        note that even if the timeout if very large, we will not spin for ever.
+   * \param milliseconds the max amount of time we are prepared to wait for.
+   * \param future the future we will be waiting for.
+   * \return true if the future completed or false if we timed out.
+   */
+  static bool SpinUntilFutureComplete(const long long milliseconds, std::future<void>& future)
+  {
+    // how long we will allow it to run for
+    // note that we are adding a little bit of padding.
+    const int padding = 10;
+    const auto until = std::chrono::high_resolution_clock::now() + std::chrono::milliseconds(milliseconds + padding);
+
+    const auto oneMillisecond = std::chrono::milliseconds(1);
+    for (auto count = 0; count < std::numeric_limits<int>::max(); ++count)
+    {
+      // wait for that thread to complete.
+      // it could hang forever as well
+      // but we tried to make sure that it never does.
+      // but it is posible that the condition() will hang.
+      auto status = future.wait_for(oneMillisecond);
+      if (status == std::future_status::ready)
+      {
+        // the thread is finished
+        return true;
+      }
+
+      // are we done?
+      if (std::chrono::high_resolution_clock::now() >= until)
+      {
+        // we timed out.
+        return false;
+      }
+    }
+
+    // if we ever get here ... we reached the spin limit
+    // this future is gone, it will never complete.
+    return false;
+  }
+
+  bool Awaiter(const long long milliseconds, std::function<bool()>& condition)
   {
     bool result = false;
     std::unique_lock<std::mutex> lock(_mutex);
@@ -103,22 +151,36 @@ private:
       }
       else
       {
+        // one ms wait.
         const auto oneMillisecond = std::chrono::milliseconds(1);
+        const auto zeroMilliseconds = std::chrono::milliseconds(0);
 
         // when we want to sleep until.
         const auto until = std::chrono::high_resolution_clock::now() + std::chrono::milliseconds(milliseconds);
         for (auto count = 0; count < std::numeric_limits<int>::max(); ++count)
         {
-          if (condition())
+          try
           {
-            result = true;
-            break;
+            if (condition())
+            {
+              result = true;
+              break;
+            }
+          }
+          catch (...)
+          {
+            // this is bad ... the condition failed.
           }
 
           if (count % 4 == 0)
           {
             // slee a little bit
             std::this_thread::sleep_for(oneMillisecond);
+          }
+          else if (count % 2 == 0)
+          {
+            // slee a little bit
+            std::this_thread::sleep_for(zeroMilliseconds);
           }
           else
           {

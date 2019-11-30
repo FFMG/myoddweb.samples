@@ -16,8 +16,8 @@ int main()
   Wait::SpinUntil([&] { 
     auto now = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> inner = now - t2;
-    return inner.count() >= 6000;
-  }, 5000 );
+    return inner.count() >= 29000;
+  }, 30000 );
   auto t3 = std::chrono::high_resolution_clock::now();
 
   std::chrono::duration<double, std::milli> ms1 = t2 - t1;
