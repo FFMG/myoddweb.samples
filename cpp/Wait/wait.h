@@ -7,13 +7,6 @@
 
 class Wait final
 {
-  struct Helper
-  {
-    Wait* parent;
-    long long ms;
-    std::function<bool()> predicate;
-  };
-
   /** 
    * \brief the conditional locl
    */
@@ -73,12 +66,9 @@ private:
     std::promise<bool> callResult;
     auto callFuture = callResult.get_future();
 
-    // create the helper.
-    Helper helper = { &waiter, milliseconds, condition };
-
     // start the thread with the arguments we have
     auto future = std::async( std::launch::async,
-      _Awaiter, helper, std::move(callResult)
+      &Awaiter, &waiter, std::move(condition), milliseconds, std::move(callResult)
     );
 
     // wait for the future to complete ... or timeout.
@@ -134,7 +124,22 @@ private:
     return false;
   }
 
-  bool Awaiter(const long long milliseconds, std::function<bool()>& condition)
+  /**
+   * \brief the main function that does all the waiting.
+   *        the promise will contain the result of the waiting
+   *          - false = we timedout
+   *          - true = the condition returned true and we stopped waiting.
+   * \param condition the condition we wan to run to return out of the function
+   *        if empty/null then we will never check the condition
+   * \param milliseconds the maximum amount of time we want to wait
+   *        if the condition is not set then we will always return false and wait for that number of ms.
+   * \param promise the promise that we will use to set the result.
+   */
+  void Awaiter(
+    std::function<bool()>&& condition,
+    const long long milliseconds,
+    std::promise<bool>&& callResult
+  )
   {
     bool result = false;
     std::unique_lock<std::mutex> lock(_mutex);
@@ -207,11 +212,6 @@ private:
     _conditionVariable.notify_one();
 
     // all done
-    return result;
-  }
-
-  static void _Awaiter(Helper&& helper, std::promise<bool>&& callResult)
-  {
-    callResult.set_value( helper.parent->Awaiter(helper.ms, helper.predicate ));
+    return callResult.set_value( result);
   }
 };
